@@ -1,0 +1,82 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+int* couleurs;
+int** precedences;
+int* degre;
+
+void bfs(int depart, int nombre_operations) {
+    bool visite[nombre_operations];
+    for (int i = 0; i < nombre_operations; i++) {
+        visite[i] = false;
+    }
+
+    int* file = (int*)malloc(nombre_operations * sizeof(int));
+    int debut = 0, fin = 0;
+    file[fin++] = depart;
+    visite[depart] = true;
+
+    while (debut != fin) {
+        int courant = file[debut++];
+        for (int i = 0; i < nombre_operations; i++) {
+            if (precedences[courant][i] && !visite[i]) {
+                file[fin++] = i;
+                visite[i] = true;
+                couleurs[i] = couleurs[courant] + 1;
+            }
+        }
+    }
+    free(file);
+}
+
+int main() {
+    int nombre_operations = 34;
+
+   
+    couleurs = (int*)malloc((nombre_operations + 1) * sizeof(int));
+    degre = (int*)malloc((nombre_operations + 1) * sizeof(int));
+    precedences = (int**)malloc((nombre_operations + 1) * sizeof(int));
+    for (int i = 0; i <= nombre_operations; i++) {
+        couleurs[i] = 0;
+        degre[i] = 0;
+        precedences[i] = (int*)malloc((nombre_operations + 1) * sizeof(int));
+        for (int j = 0; j <= nombre_operations; j++) {
+            precedences[i][j] = 0;
+        }
+    }
+
+    FILE *fichier_precedence = fopen("precedences.txt", "r");
+    if (fichier_precedence == NULL) {
+        printf("probleme dans le fichier des precedences\n");
+        return 1;
+    }
+
+    int op1, op2;
+    while (fscanf(fichier_precedence, "%d %d", &op1, &op2) == 2) {
+        precedences[op1][op2] = 1;
+        degre[op2]++;
+    }
+
+    fclose(fichier_precedence);
+    
+    for (int i = 1; i <= nombre_operations; i++) {
+        if (degre[i] == 0) {
+            bfs(i, nombre_operations);
+        }
+    }
+
+    for (int operation = 1; operation <= nombre_operations; operation++) {
+        printf("Operation %d: Station %d\n", operation, couleurs[operation]);
+    }
+
+    // Libérer la mémoire allouée
+    free(couleurs);
+    free(degre);
+    for (int i = 0; i <= nombre_operations; i++) {
+        free(precedences[i]);
+    }
+    free(precedences);
+
+    return 0;
+}
