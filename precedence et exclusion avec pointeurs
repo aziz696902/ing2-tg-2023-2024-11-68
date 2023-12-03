@@ -1,0 +1,147 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+int* couleurs;
+int** precedences;
+int* degre;
+
+void bfs(int depart, int nombre_operations) {
+    bool visite[nombre_operations];
+    for (int i = 0; i < nombre_operations; i++) {
+        visite[i] = false;
+    }
+
+    int* file = (int*)malloc(nombre_operations * sizeof(int));
+    int debut = 0, fin = 0;
+    file[fin++] = depart;
+    visite[depart] = true;
+
+    while (debut != fin) {
+        int courant = file[debut++];
+        for (int i = 0; i < nombre_operations; i++) {
+            if (precedences[courant][i] && !visite[i]) {
+                file[fin++] = i;
+                visite[i] = true;
+                couleurs[i] = couleurs[courant] + 1;
+            }
+        }
+    }
+    free(file);
+}
+
+int main() {
+    int nombre_operations = 34;
+    int nombre_exclusions = 20;
+
+    int** E = (int**)malloc(nombre_exclusions * sizeof(int*));
+    for (int i = 0; i < nombre_exclusions; i++) {
+        E[i] = (int*)malloc(2 * sizeof(int));
+    }
+
+    FILE *fichier = fopen("exclusion.txt", "r");
+    if (fichier == NULL) {
+        printf("probleme dans le fichier\n");
+        return 1;
+    }
+
+    for (int i = 0; i < nombre_exclusions; i++) {
+        if (fscanf(fichier, "%d %d", &E[i][0], &E[i][1]) != 2) {
+            printf("Probleme dans le fichier des exclusions %d\n", i);
+            return 1;
+        }
+    }
+
+    fclose(fichier);
+
+    // Lecture de precedences.txt et remplissage du tableau 'precedences'
+
+    // Initialisation du tableau 'degre' pour stocker le degré entrant de chaque opération
+    couleurs = (int*)malloc((nombre_operations + 1) * sizeof(int));
+    degre = (int*)malloc((nombre_operations + 1) * sizeof(int));
+    precedences = (int**)malloc((nombre_operations + 1) * sizeof(int*));
+    for (int i = 0; i <= nombre_operations; i++) {
+        couleurs[i] = 0;
+        degre[i] = 0;
+        precedences[i] = (int*)malloc((nombre_operations + 1) * sizeof(int));
+        for (int j = 0; j <= nombre_operations; j++) {
+            precedences[i][j] = 0;
+        }
+    }
+
+    FILE *fichier_precedence = fopen("precedences.txt", "r");
+    if (fichier_precedence == NULL) {
+        printf("probleme dans le fichier des precedences\n");
+        return 1;
+    }
+
+    int op1, op2;
+    while (fscanf(fichier_precedence, "%d %d", &op1, &op2) == 2) {
+        precedences[op1][op2] = 1;
+    }
+
+    fclose(fichier_precedence);
+
+    for (int i = 1; i <= nombre_operations; i++) {
+        for (int j = 1; j <= nombre_operations; j++) {
+            if (precedences[i][j]) {
+                degre[j]++;
+            }
+        }
+    }
+
+    // Effectuer un BFS pour chaque opération avec un degré entrant de 0
+    for (int i = 1; i <= nombre_operations; i++) {
+        if (degre[i] == 0) {
+            bfs(i, nombre_operations);
+        }
+    }
+
+    // Vérifier et respecter les exclusions
+    for (int i = 0; i < nombre_exclusions; i++) {
+        int op1 = E[i][0];
+        int op2 = E[i][1];
+
+        // Si les opérations op1 et op2 sont dans la même station, ajuster si nécessaire
+        if (couleurs[op1] == couleurs[op2]) {
+            // Trouver une station où op1 et op2 peuvent être placés sans violer les exclusions
+            int nouvelle_station = couleurs[op2] + 1; // Essayer de placer op2 dans la station suivante
+
+            // Vérifier si op1 ou op2 a un conflit avec les opérations déjà dans la nouvelle station
+            while (nouvelle_station <= nombre_operations) {
+                bool conflit = false;
+                for (int j = 1; j <= nombre_operations; j++) {
+                    if (couleurs[j] == nouvelle_station && ((j == op1 && precedences[op2][j]) || (j == op2 && precedences[op1][j]))) {
+                        conflit = true;
+                        break;
+                    }
+                }
+
+                if (conflit) {
+                    nouvelle_station++;
+                } else {
+                    couleurs[op2] = nouvelle_station;
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int operation = 1; operation <= nombre_operations; operation++) {
+        printf("Operation %d: Station %d\n", operation, couleurs[operation]);
+    }
+
+    // Libérer la mémoire allouée
+    free(couleurs);
+    free(degre);
+    for (int i = 0; i <= nombre_operations; i++) {
+        free(precedences[i]);
+    }
+    free(precedences);
+    for (int i = 0; i < nombre_exclusions; i++) {
+        free(E[i]);
+    }
+    free(E);
+
+    return 0;
+}
