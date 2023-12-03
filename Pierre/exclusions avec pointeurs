@@ -1,0 +1,85 @@
+#include <stdio.h>
+#include <stdlib.h> // Pour l'allocation dynamique
+
+int main() {
+    int nomboperations = 35; // Modifier la valeur ici
+    int nombreexclusions = 20; // Modifier la valeur ici
+
+    int* couleurs = (int*)malloc((nomboperations + 1) * sizeof(int));
+    if (couleurs == NULL) {
+        printf("Problème d'allocation de mémoire\n");
+        return 1;
+    }
+
+    for (int i = 0; i <= nomboperations; i++) {
+        couleurs[i] = 0;
+    }
+
+    int maxcouleur = 0;
+
+    int (*E)[2] = (int (*)[2])malloc(nombreexclusions * sizeof(*E));
+    if (E == NULL) {
+        printf("Problème d'allocation de mémoire pour E\n");
+        free(couleurs);
+        return 1;
+    }
+
+    FILE *file = fopen("exclusion.txt", "r");
+    if (file == NULL) {
+        printf("Problème dans le fichier\n");
+        free(couleurs);
+        free(E);
+        return 1;
+    }
+
+    for (int i = 0; i < nombreexclusions; i++) {
+        if (fscanf(file, "%d %d", &E[i][0], &E[i][1]) != 2) {
+            printf("Problème dans le fichier des exclusions %d\n", i);
+            free(couleurs);
+            free(E);
+            fclose(file);
+            return 1;
+        }
+    }
+
+    fclose(file);
+
+    for (int operation = 1; operation <= nomboperations; operation++) {
+        int* couleurexclus = (int*)calloc((nomboperations + 1), sizeof(int));
+        if (couleurexclus == NULL) {
+            printf("Problème d'allocation de mémoire pour couleurexclus\n");
+            free(couleurs);
+            free(E);
+            return 1;
+        }
+
+        for (int i = 0; i < nombreexclusions; i++) {
+            if (E[i][0] == operation) {
+                couleurexclus[couleurs[E[i][1]]] = 1;
+            } else if (E[i][1] == operation) {
+                couleurexclus[couleurs[E[i][0]]] = 1;
+            }
+        }
+
+        int couleur;
+        for (couleur = 1; couleur <= maxcouleur; couleur++) {
+            if (!couleurexclus[couleur]) {
+                break;
+            }
+        }
+        if (couleur > maxcouleur) {
+            maxcouleur = couleur;
+        }
+        couleurs[operation] = couleur;
+        free(couleurexclus);
+    }
+
+    for (int operation = 1; operation <= nomboperations; operation++) {
+        printf("Operation %d: Station %d\n", operation, couleurs[operation]);
+    }
+
+    free(couleurs);
+    free(E);
+
+    return 0;
+}
